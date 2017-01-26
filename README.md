@@ -6,6 +6,10 @@ Ok, now that the legal stuff is out of the way (you never can be too careful)...
 
 MobileMovement detects a bunch of common movements from your mobile phone browser while you are holding your phone in your hand (think of it kind of like if your phone was a Nintendo Wii controller), and lets you apply callback functions for any of these movements. You can also register your own movements.
 
+A working example can be seen here:
+
+http://www.timlongcreative.com/libraries/mobilemovement/mobilemovement-demo-1.html
+
 After referencing the MobileMovement script from your webpage, you can create a MobileMovement object with a simple line of code:
 
 ```
