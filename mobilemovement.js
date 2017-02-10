@@ -5,7 +5,18 @@
  * @license Available for use under the MIT license. 
  */
 ;var MobileMovement = (function() {
-	var self;
+	var self,
+		latestVals = {
+			alpha: 0,
+			beta: 0,
+			gamma: 0,
+			uninitialized: true
+		},
+		longestStretch = {
+			alpha: 0,
+			beta: 0,
+			gamma: 0
+		};
 
 	/**
 	 * @description Constructor function for creating MobileMovement objects.
@@ -33,7 +44,7 @@
 		if(window.DeviceOrientationEvent) {
 			window.addEventListener("deviceorientation", reactToDeviceMove, false);
 		}
-
+ 
 		// Create numerous custom movement detection objects.
 		this.registerMovement("ball and paddle hit", [
 			{beta: [-Infinity, 4.9999]},
@@ -50,9 +61,8 @@
 			{beta: [0, 75]}
 		]);
 
-		this.registerMovement("bat", [
-			{alpha: [-Infinity, 4.9999]},
-			{alpha: [5, Infinity]}
+		this.registerMovement("swing bat", [
+			{alpha: 60}
 		]);
 		
 		this.registerMovement("upside down golf swing", [
@@ -85,26 +95,26 @@
 			{beta: [-Infinity, 5]}
 		]);
 
-		this.registerMovement("left turn landscape", [
-			{alpha: [-Infinity, 180]},
-			{alpha: [180, Infinity]}
+		// This assumes that the top of the phone is facing left.
+		this.registerMovement("left turn landscape", [			
+			{beta: [-5, Infinity]},
+			{beta: [-Infinity, -5]}
 		]);
 
+		// This assumes that the top of the phone is facing left.
 		this.registerMovement("right turn landscape", [
-			{alpha: [180, Infinity]},
-			{alpha: [Infinity, 180]}
+			{beta: [-Infinity, 5]},
+			{beta: [5, Infinity]}
 		]);
 
 		this.registerMovement("left turn portrait", [
-			{gamma: [-Infinity, 0]},
-			{gamma: [0, Infinity]}
+			{alpha: 70}
 		]);
 
 		this.registerMovement("right turn portrait", [
-			{gamma: [0, Infinity]},
-			{gamma: [-Infinity, 0]}
+			{alpha: -70}
 		]);
-		
+
 		this.registerMovement("look up portrait", [
 			{beta: [-Infinity, 70]},
 			{beta: [100, Infinity]}
@@ -176,8 +186,7 @@
 			{gamma: [0, Infinity]},
 			{gamma: [-Infinity, 0]}
 		]);
-		
-		//*** Or bowling ball roll
+
 		this.registerMovement("ball roll", [
 			{beta: [-Infinity, -90]},
 			{beta: [-75, Infinity]}
@@ -211,13 +220,11 @@
 		
 		// This assumes right-handed
 		this.registerMovement("frisbee", [
-			{alpha: [300, Infinity]},
-			{alpha: [-Infinity, 300]}
+			{alpha: -60}
 		]);
 
 		this.registerMovement("frisbee left", [
-			{alpha: [-Infinity, 300]},
-			{alpha: [300, Infinity]}
+			{alpha: 60}
 		]);
 
 		// Hadouken with the device facing the user
@@ -232,9 +239,8 @@
 			{beta: [-Infinity, 20]}
 		]);
 
-		this.registerMovement("ninja star left", [
-			{alpha: [-Infinity, 200]},
-			{alpha: [200, Infinity]}
+		this.registerMovement("frisbee left", [
+			{alpha: -60}
 		]);
 
 		this.registerMovement("left turn landscape", [
@@ -248,8 +254,8 @@
 		]);
 		
 		this.registerMovement("soda shake", [
-			{alpha: [250, Infinity]},
-			{alpha: [-Infinity, 250]}
+			{alpha: -40},
+			{alpha: 40}
 		]);
 
 		this.registerMovement("drink", [
@@ -278,7 +284,7 @@
 			{gamma: [-45, Infinity]},
 			{gamma: [-Infinity, -60]}
 		]);
-		
+
 		this.registerMovement("drink from bottle", [
 			{beta: [0, Infinity]},
 			{beta: [-Infinity, -40]}
@@ -288,7 +294,7 @@
 			{beta: [30, Infinity]},
 			{beta: [-Infinity, 10]}
 		]);
-		
+
 		// The next two refer to holding up auction paddles. "bid" is used when the phone faces away, as if it has a number on the screen and the user is bidding.
 		this.registerMovement("bid", [
 			{beta: [140, Infinity]},
@@ -364,7 +370,7 @@
 	/**
 	 * @description Names and defines a new physical movement to be recognized.
 	 * @param {string} name - A name to define the current movement. This name will be used to define callbacks later on the movement.
-	 * @param {Object | Array} path - An array of ordered steps that would trigger detection of the entire movement. Each step contains bounds for orientation values.
+	 * @param {Object[]} path - An array of ordered steps that would trigger detection of the entire movement. Each step contains bounds for orientation values.
 	 * @param {Object} [callback] - An optional callback function to be invoked each time the movement is completed. Typically this will be added later, after the object is created.
 	 * @param {number} [delay] - An optional number of milliseconds to wait after the callback is executed before the movement detection should begin again. Defaults to 500.
 	 * @returns {Object} - The current referenced MobileMovement object.
@@ -373,6 +379,22 @@
 		this.registeredMovements[name] = {
 			path: path,
 			currentState: 0,
+			//*** This is currently set to the entire system, but I am considering whether or not it will help to use it on each movement as a separate property.
+			
+			/*
+			longestStretch: {
+				alpha: 0,
+				beta: 0,
+				gamma: 0
+			},
+			latestVals: {
+				alpha: 0,
+				beta: 0,
+				gamma: 0,
+				uninitialized: true
+			},
+			*/
+			
 			watch: {},
 			recoilTime: delay || 500,
 			callback: callback || function() {},
@@ -398,13 +420,102 @@
 	var reactToDeviceMove = function(e) {
 		var a = e.alpha || 0,
 			b = e.beta || 0,
-			c = e.gamma || 0;
+			c = e.gamma || 0,
+			aDiff,
+			bDiff,
+			cDiff;
+		
+		// Track movements that depend on a certain length of variation in alpha, beta, or gamma.
 
-		for(var action in self.monitoredMovements) {
+		// Set up starting points.
+		if(latestVals.uninitialized) {
+			latestVals.alpha = a;
+			latestVals.beta = b;
+			latestVals.gamma = c;
+
+			delete latestVals.uninitialized;
+		}
+
+		aDiff = Math.abs(a - latestVals.alpha);
+		bDiff = Math.abs(b - latestVals.beta);
+		cDiff = Math.abs(c - latestVals.gamma);
+
+		// Shift numbers to account for crossing over 360
+		if(a - latestVals.alpha > 300) {
+			latestVals.alpha += 360;
+		} else if(latestVals.alpha - a > 300) {
+			a += 360;
+		}
+		
+		if(b - latestVals.beta > 300) {
+			latestVals.beta += 360;
+		} else if(latestVals.beta - b > 300) {
+			b += 360;
+		}
+		
+		if(c - latestVals.gamma > 300) {
+			latestVals.gamma += 360;
+		} else if(latestVals.gamma - c > 300) {
+			c += 360;
+		}
+		
+		// Reset numbers as necessary.
+		
+		if(a > latestVals.alpha) { // alpha is going up
+			if(longestStretch.alpha >= 0) { // alpha was not going down before, so let's keep going up
+				longestStretch.alpha += a - latestVals.alpha;
+			} else {
+				longestStretch.alpha = 0; // alpha was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // alpha is going down
+			if(longestStretch.alpha <= 0) { // alpha was not going up, so we keep going down (a - latestVals.alpha is negative)
+				longestStretch.alpha += a - latestVals.alpha;
+			} else {
+				longestStretch.alpha = 0; // reset as above
+			}
+		}
+		
+		if(b > latestVals.beta) { // beta is going up
+			if(longestStretch.beta >= 0) { // beta was not going down before, so let's keep going up
+				longestStretch.beta += b - latestVals.beta;
+			} else {
+				longestStretch.beta = 0; // beta was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // beta is going down
+			if(longestStretch.beta <= 0) { // beta was not going up, so we keep going down (b - latestVals.beta is negative)
+				longestStretch.beta += b - latestVals.beta;
+			} else {
+				longestStretch.beta = 0; // reset as above
+			}
+		}
+
+		if(c > latestVals.gamma) { // gamma is going up
+			if(longestStretch.gamma >= 0) { // gamma was not going down before, so let's keep going up
+				longestStretch.gamma += c - latestVals.gamma;
+			} else {
+				longestStretch.gamma = 0; // gamma was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // gamma is going down
+			if(longestStretch.gamma <= 0) { // gamma was not going up, so we keep going down (c - latestVals.gamma is negative)
+				longestStretch.gamma += c - latestVals.gamma;
+			} else {
+				longestStretch.gamma = 0; // reset as above
+			}
+		}
+		
+		a %= 360;
+		b %= 360;
+		c %= 360;
+		
+		for(var action in self.monitoredMovements) {			
 			if(inBounds(e, action)) {
 				advanceCurrentState(self.monitoredMovements[action], action);
 			}
 		}
+
+		latestVals.alpha = a;
+		latestVals.beta = b;
+		latestVals.gamma = c;
 	}; // End reactToDeviceMove()
 
 	/**
@@ -419,20 +530,56 @@
 			c = e.gamma,
 			pathIndex = self.monitoredMovements[actionKey].currentState,
 			bounds = self.monitoredMovements[actionKey].path[pathIndex];
-			
-		if((!self.monitoredMovements[actionKey].watch.alpha || (bounds.alpha[0] <= a && a <= bounds.alpha[1])) &&
-			(!self.monitoredMovements[actionKey].watch.beta || (bounds.beta[0] <= b && b <= bounds.beta[1])) &&
-			(!self.monitoredMovements[actionKey].watch.gamma || (bounds.gamma[0] <= c && c <= bounds.gamma[1]))) {
+		
+		// Waiting for recoil to take effect.
+		if(pathIndex >= self.monitoredMovements[actionKey].path.length) {
+			return false;
+		}
+
+		if(inPropertyBounds(e, actionKey, "alpha", bounds) && inPropertyBounds(e, actionKey, "beta", bounds) && inPropertyBounds(e, actionKey, "gamma", bounds)) {
 			return true;
 		}
+		
 
 		return false;
 	}; // End inBounds()
 
 	/**
+	 * @description Checks conditions in a path step for alpha, beta, and gamma DeviceOrientation properties.
+	 * @param {Object} ortnEvent - The original orientation event being used to check the current step.
+	 * @param {string} actionKey - The string name of the registered movement being checked.
+	 * @param {string} letter - The orientation event property being checked ("alpha", "beta", or "gamma").
+	 * @param {Object[]|number} bounds - A 2-element array containing the lower and upper bounds of the step being checked.
+	 * @returns {boolean}
+	 */
+	var inPropertyBounds = function(ortnEvent, actionKey, letter, bounds) {
+
+		// Ignore properties that aren't being tracked.
+		if(!self.monitoredMovements[actionKey].watch[letter]) {
+			return true;
+		}
+
+		if(Array.isArray(bounds[letter])) { // This path step has been defined as an array of two values (a lower bound and an upper bound).
+			if((bounds[letter][0] <= ortnEvent[letter] && ortnEvent[letter] <= bounds[letter][1])) {
+				return true;
+			}
+		} else { // This path step has been defined by a variation amount of an orientation value, so the property is of type "number".
+			if(bounds[letter] > 0 && longestStretch[letter] >= bounds[letter]) {
+				longestStretch[letter] = 0;
+				return true; 
+			} else if(bounds[letter] < 0 && longestStretch[letter] <= bounds[letter]) {
+				longestStretch[letter] = 0;
+				return true;
+			}
+		}
+		
+		return false;
+	}; // End inPropertyBounds()
+	
+	/**
 	 * @description Increments the current state of the movement object, and invokes the callback if the end of the object's path has been reached.
 	 * @param {Object} obj - The registeredMovement object whose currentState is being incremented.
-	 * @param {string} action - The registered name of the movement. 
+	 * @param {string} action - The registered name of the movement.
 	 */
 	var advanceCurrentState = function(obj, action) {
 		obj.currentState++;
