@@ -345,9 +345,9 @@
 	 * @returns {Object} - The current referenced MobileMovement object.
 	 */
 	MobileMovement.prototype.on = function(callbackName, responseFunc) {
-		this.monitoredMovements[currentCallback] = this.registeredMovements[currentCallback];
+		this.monitoredMovements[callbackName] = this.registeredMovements[callbackName];
 		
-		this.monitoredMovements[currentCallback].callback = responseFunc || function() {};
+		this.monitoredMovements[callbackName].callback = responseFunc || function() {};
 		
 		return this;
 	}; // End MobileMovement.prototype.on()
