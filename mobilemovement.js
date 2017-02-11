@@ -499,7 +499,7 @@
 			updateLongestStretch(self.monitoredMovements[action], a, b, c);
 
 			if(inBounds(e, action)) {
-				advanceCurrentState(self.monitoredMovements[action], action);
+				advanceCurrentState(self.monitoredMovements[action], action, e);
 			}
 		}
 
@@ -571,11 +571,16 @@
 	 * @description Increments the current state of the movement object, and invokes the callback if the end of the object's path has been reached.
 	 * @param {Object} obj - The registeredMovement object whose currentState is being incremented.
 	 * @param {string} action - The registered name of the movement.
+	 * @param {Object} e - The original DeviceOrientation event that led to this function being triggered.
 	 */
-	var advanceCurrentState = function(obj, action) {
+	var advanceCurrentState = function(obj, action, e) {
 		obj.currentState++;
 		if(obj.currentState === obj.path.length) {
-			obj.callback();
+			obj.callback({
+				movement: obj, // same as `this` within the callback, unless .bind() has been applied
+				action: action,
+				event: e
+			});
 			
 			setTimeout(function(){
 				if(self.monitoredMovements[action]) { // that is, if it hasn't been removed already
