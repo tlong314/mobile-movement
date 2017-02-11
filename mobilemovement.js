@@ -385,7 +385,12 @@
 			callback: callback || function() {},
 			reset: function() {
 				this.currentState = 0;
-				this.callback = function() {};
+				this.longestStretch = {
+					alpha: 0,
+					beta: 0,
+					gamma: 0,
+					uninitialized: true
+				};
 			}
 		};
 
