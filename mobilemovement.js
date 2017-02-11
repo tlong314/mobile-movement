@@ -11,11 +11,6 @@
 			beta: 0,
 			gamma: 0,
 			uninitialized: true
-		},
-		longestStretch = {
-			alpha: 0,
-			beta: 0,
-			gamma: 0
 		};
 
 	/**
@@ -379,22 +374,12 @@
 		this.registeredMovements[name] = {
 			path: path,
 			currentState: 0,
-			//*** This is currently set to the entire system, but I am considering whether or not it will help to use it on each movement as a separate property.
-			
-			/*
 			longestStretch: {
-				alpha: 0,
-				beta: 0,
-				gamma: 0
-			},
-			latestVals: {
 				alpha: 0,
 				beta: 0,
 				gamma: 0,
 				uninitialized: true
 			},
-			*/
-			
 			watch: {},
 			recoilTime: delay || 500,
 			callback: callback || function() {},
@@ -413,6 +398,57 @@
 		return this;
 	}; // End registerMovement()
 
+	/**
+	 * @description Checks a movements longestStretch object values, and applies current changes.
+	 * @param {Object} movement - The monitored movement being updated.
+	 * @param {number} a - The alpha component of the DeviceOrientation event that triggered this update.
+	 * @param {number} b - The beta component of the DeviceOrientation event that triggered this update.
+	 * @param {number} c - The gamma component of the DeviceOrientation event that triggered this update.
+	 */
+	var updateLongestStretch = function(movement, a, b, c) {
+		if(a > latestVals.alpha) { // alpha is going up
+			if(movement.longestStretch.alpha >= 0) { // alpha was not going down before, so let's keep going up
+				movement.longestStretch.alpha += a - latestVals.alpha;
+			} else {
+				movement.longestStretch.alpha = 0; // alpha was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // alpha is going down
+			if(movement.longestStretch.alpha <= 0) { // alpha was not going up, so we keep going down (a - latestVals.alpha is negative)
+				movement.longestStretch.alpha += a - latestVals.alpha;
+			} else {
+				movement.longestStretch.alpha = 0; // reset as above
+			}
+		}
+		
+		if(b > latestVals.beta) { // beta is going up
+			if(movement.longestStretch.beta >= 0) { // beta was not going down before, so let's keep going up
+				movement.longestStretch.beta += b - latestVals.beta;
+			} else {
+				movement.longestStretch.beta = 0; // beta was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // beta is going down
+			if(movement.longestStretch.beta <= 0) { // beta was not going up, so we keep going down (b - latestVals.beta is negative)
+				movement.longestStretch.beta += b - latestVals.beta;
+			} else {
+				movement.longestStretch.beta = 0; // reset as above
+			}
+		}
+
+		if(c > latestVals.gamma) { // gamma is going up
+			if(movement.longestStretch.gamma >= 0) { // gamma was not going down before, so let's keep going up
+				movement.longestStretch.gamma += c - latestVals.gamma;
+			} else {
+				movement.longestStretch.gamma = 0; // gamma was going down before, so let's reset this movement and try going up again on the next call
+			}
+		} else { // gamma is going down
+			if(movement.longestStretch.gamma <= 0) { // gamma was not going up, so we keep going down (c - latestVals.gamma is negative)
+				movement.longestStretch.gamma += c - latestVals.gamma;
+			} else {
+				movement.longestStretch.gamma = 0; // reset as above
+			}
+		}		
+	}; // End updateLongestStretch()
+	
 	/**
 	 * @description Gathers current orientation values and checks if monitoredMovements objects are affected.
 	 * @param {Object} e - The DeviceOrientationEvent object that triggered this handler.
@@ -458,64 +494,18 @@
 		} else if(latestVals.gamma - c > 300) {
 			c += 360;
 		}
-		
-		// Reset numbers as necessary.
-		
-		if(a > latestVals.alpha) { // alpha is going up
-			if(longestStretch.alpha >= 0) { // alpha was not going down before, so let's keep going up
-				longestStretch.alpha += a - latestVals.alpha;
-			} else {
-				longestStretch.alpha = 0; // alpha was going down before, so let's reset this movement and try going up again on the next call
-			}
-		} else { // alpha is going down
-			if(longestStretch.alpha <= 0) { // alpha was not going up, so we keep going down (a - latestVals.alpha is negative)
-				longestStretch.alpha += a - latestVals.alpha;
-			} else {
-				longestStretch.alpha = 0; // reset as above
-			}
-		}
-		
-		if(b > latestVals.beta) { // beta is going up
-			if(longestStretch.beta >= 0) { // beta was not going down before, so let's keep going up
-				longestStretch.beta += b - latestVals.beta;
-			} else {
-				longestStretch.beta = 0; // beta was going down before, so let's reset this movement and try going up again on the next call
-			}
-		} else { // beta is going down
-			if(longestStretch.beta <= 0) { // beta was not going up, so we keep going down (b - latestVals.beta is negative)
-				longestStretch.beta += b - latestVals.beta;
-			} else {
-				longestStretch.beta = 0; // reset as above
-			}
-		}
 
-		if(c > latestVals.gamma) { // gamma is going up
-			if(longestStretch.gamma >= 0) { // gamma was not going down before, so let's keep going up
-				longestStretch.gamma += c - latestVals.gamma;
-			} else {
-				longestStretch.gamma = 0; // gamma was going down before, so let's reset this movement and try going up again on the next call
-			}
-		} else { // gamma is going down
-			if(longestStretch.gamma <= 0) { // gamma was not going up, so we keep going down (c - latestVals.gamma is negative)
-				longestStretch.gamma += c - latestVals.gamma;
-			} else {
-				longestStretch.gamma = 0; // reset as above
-			}
-		}
-		
-		a %= 360;
-		b %= 360;
-		c %= 360;
-		
-		for(var action in self.monitoredMovements) {			
+		for(var action in self.monitoredMovements) {
+			updateLongestStretch(self.monitoredMovements[action], a, b, c);
+
 			if(inBounds(e, action)) {
 				advanceCurrentState(self.monitoredMovements[action], action);
 			}
 		}
 
-		latestVals.alpha = a;
-		latestVals.beta = b;
-		latestVals.gamma = c;
+		latestVals.alpha = a % 360;
+		latestVals.beta = b % 360;
+		latestVals.gamma = c % 360;
 	}; // End reactToDeviceMove()
 
 	/**
@@ -528,8 +518,9 @@
 		var a = e.alpha,
 			b = e.beta,
 			c = e.gamma,
-			pathIndex = self.monitoredMovements[actionKey].currentState,
-			bounds = self.monitoredMovements[actionKey].path[pathIndex];
+			movement = self.monitoredMovements[actionKey],
+			pathIndex = movement.currentState,
+			bounds = movement.path[pathIndex];
 		
 		// Waiting for recoil to take effect.
 		if(pathIndex >= self.monitoredMovements[actionKey].path.length) {
@@ -539,7 +530,6 @@
 		if(inPropertyBounds(e, actionKey, "alpha", bounds) && inPropertyBounds(e, actionKey, "beta", bounds) && inPropertyBounds(e, actionKey, "gamma", bounds)) {
 			return true;
 		}
-		
 
 		return false;
 	}; // End inBounds()
@@ -553,9 +543,10 @@
 	 * @returns {boolean}
 	 */
 	var inPropertyBounds = function(ortnEvent, actionKey, letter, bounds) {
-
+		var movement = self.monitoredMovements[actionKey];
+	
 		// Ignore properties that aren't being tracked.
-		if(!self.monitoredMovements[actionKey].watch[letter]) {
+		if(!movement.watch[letter]) {
 			return true;
 		}
 
@@ -564,8 +555,8 @@
 				return true;
 			}
 		} else { // This path step has been defined by a variation amount of an orientation value, so the property is of type "number".
-			if(bounds[letter] > 0 && longestStretch[letter] >= bounds[letter]) {
-				longestStretch[letter] = 0;
+			if(bounds[letter] > 0 && movement.longestStretch[letter] >= bounds[letter]) {
+				movement.longestStretch[letter] = 0;
 				return true; 
 			} else if(bounds[letter] < 0 && longestStretch[letter] <= bounds[letter]) {
 				longestStretch[letter] = 0;
