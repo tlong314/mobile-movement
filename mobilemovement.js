@@ -578,7 +578,7 @@
 		if(obj.currentState === obj.path.length) {
 			obj.callback({
 				movement: obj, // same as `this` within the callback, unless .bind() has been applied
-				action: action,
+				actionKey: action,
 				event: e
 			});
 			
