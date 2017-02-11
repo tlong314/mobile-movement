@@ -10,6 +10,8 @@ A working example can be seen here:
 
 http://www.timlongcreative.com/libraries/mobilemovement/mobilemovement-demo-1.html
 
+## Basic Usage
+
 After referencing the MobileMovement script from your webpage, you can create a MobileMovement object with a simple line of code:
 
 ```javascript
@@ -27,6 +29,31 @@ If you want to remove that callback later, use the object's `.off` method:
 ```javascript
 mm.off("basketball shot");
 ```
+
+When you add a callback with the `.on` method, this callback accepts one parameter - a primitive JavaScript object with three options: movement, actionKey, and event.
+
+```javascript
+mm.on("basketball shot", function(info) {
+		console.log(info.movement); // Logs the monitored movement object defined by "basketball shot"
+		console.log(info.actionKey); // Logs the string "basketball shot"
+		console.log(info.event.alpha); // Logs the alpha component of the DeviceOrientation event triggering the callback
+	});
+```
+
+## Options
+
+When invoking the constructor, the one available option is a simple object called "on". This can be used as shorthand to define multiple movement callbacks immediately upon creation of the MobileMovement object. Here is an example:
+
+```javascript
+var mm = new MobileMovement({
+		on: {
+			"basketball shot": function() {alert("Nice shot!");},
+			"fishing line cast": function(callbackOptions) { alert(callbackOptions.acionKey + ". Great day for fishing!"); }
+		}
+});
+```
+
+## Registering New Movements
 
 To register a new movement that is not already in the library, use the `.registerMovement` method. There are two required parameters: a string name for the action (this shouldn't match any movements that are already registered), and an array describing the lower/upper bounds where the coordinates should fall, or an amount the property should vary, in each step of a path that would create the movement. These coordinates are alpha, beta, and gamma from the DeviceOrientationEvent object - you only need to put those that affect the movement. There is an optional third parameter (a function describing the callback for this action) and an optional fourth parameter (a number defining how many milliseconds to wait after a callback is invoked before starting the movement detection again; this defaults to 500). The third and fourth parameter will rarely be used. In the example below, the path required for "basketball three pointer" to be handled has two steps: first beta must be greater than or equal to 110, then beta must end up between 0 and 75:
 
@@ -46,19 +73,6 @@ mm.registerMovement("basketball three pointer", [
 ```
 
 See below for a full list of preloaded registered movements.
-
-## Options
-
-Currently the only available option is a simple object called "on". This can be used as shorthand to define multiple movement callbacks immediately upon creation of the MobileMovement object. Here is an example:
-
-```javascript
-var mm = new MobileMovement({
-		on: {
-			"basketball shot": function() {alert("Nice shot!");},
-			"fishing line cast": function() {alert("Great day for fishing!");}
-		}
-});
-```
 
 ## Preloaded Registered Movements
 
