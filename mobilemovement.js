@@ -22,8 +22,8 @@
 		var defaults = {
 			on: {}
 		};
-		
-		 self = this;
+
+		self = this;
 
 		if(!opts) {
 			opts = {};
@@ -563,15 +563,15 @@
 			if(bounds[letter] > 0 && movement.longestStretch[letter] >= bounds[letter]) {
 				movement.longestStretch[letter] = 0;
 				return true; 
-			} else if(bounds[letter] < 0 && longestStretch[letter] <= bounds[letter]) {
-				longestStretch[letter] = 0;
+			} else if(bounds[letter] < 0 && movement.longestStretch[letter] <= bounds[letter]) {
+				movement.longestStretch[letter] = 0;
 				return true;
 			}
 		}
 		
 		return false;
 	}; // End inPropertyBounds()
-	
+
 	/**
 	 * @description Increments the current state of the movement object, and invokes the callback if the end of the object's path has been reached.
 	 * @param {Object} obj - The registeredMovement object whose currentState is being incremented.
