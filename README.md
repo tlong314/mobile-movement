@@ -8,7 +8,7 @@ MobileMovement detects a bunch of common movements from your mobile phone browse
 
 A working example can be seen here:
 
-http://www.timlongcreative.com/libraries/mobilemovement/mobilemovement-demo-1.html
+http://www.timlongcreative.com/code/mobile-movement/mobile-movement-demo-1.html
 
 ## Basic Usage
 
